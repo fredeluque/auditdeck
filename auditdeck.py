@@ -392,6 +392,174 @@ def cmd_cheatsheet(args) -> int:
     return 0
 
 
+def _flatten_payloads(v: dict) -> list[tuple[str, str]]:
+    """Aplana los payloads de una vuln en (payload, etiqueta-de-grupo)."""
+    out: list[tuple[str, str]] = []
+    for group, items in v.get("payloads", {}).items():
+        for p in items:
+            out.append((p, group))
+    return out
+
+
+def _choose_vuln_payloads(vulns: list[dict]) -> list[tuple[str, str]] | None:
+    """Selector interactivo: elige de que tema sacar los payloads a probar."""
+    have = [v for v in vulns if v.get("payloads")]
+    if not have:
+        print(red("No hay temas con payloads en la base de conocimiento."))
+        return None
+    print(bold("\n  ¿Que payloads quieres probar?\n"))
+    for i, v in enumerate(have, 1):
+        n = sum(len(g) for g in v["payloads"].values())
+        print(f"   {green(str(i)):>3}. {v.get('name',''):<28} {dim(f'({n} payloads)')}")
+    print()
+    try:
+        raw = input("  Numero (o id): ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return None
+    chosen = None
+    if raw.isdigit() and 1 <= int(raw) <= len(have):
+        chosen = have[int(raw) - 1]
+    else:
+        chosen = find_vuln(have, raw)
+    if chosen is None:
+        print(red("Seleccion no valida."))
+        return None
+    return _flatten_payloads(chosen)
+
+
+def cmd_connect(args) -> int:
+    """Cliente de socket crudo (TCP/TLS) interactivo."""
+    import probe
+
+    host, port = args.host, args.port
+    use_tls = args.tls or port == 443
+    try:
+        probe.confirm_authorization(host, assume_yes=args.yes)
+    except probe.AuthorizationError as exc:
+        print(red(f"  {exc}"), file=sys.stderr)
+        return 2
+    return probe.interactive_connect(host, port, use_tls=use_tls, timeout=args.timeout)
+
+
+def cmd_fuzz(args) -> int:
+    """Prueba automatizada: inyecta variaciones de payload y resalta anomalias."""
+    import probe
+
+    marker = args.marker
+
+    # --- 1. Construir la request y averiguar a donde conectar ---
+    if args.request:
+        try:
+            request_template = Path(args.request).read_bytes()
+        except OSError as exc:
+            print(red(f"No se pudo leer la request: {exc}"))
+            return 1
+        if not args.target:
+            print(red("Con --request necesitas --target host[:port]."))
+            return 1
+        thost, _, tport = args.target.partition(":")
+        host = thost
+        use_tls = args.tls
+        port = int(tport) if tport else (443 if use_tls else 80)
+        # En request cruda el usuario controla la codificacion; no tocamos nada.
+        encode = "url" if args.encode == "url" else "none"
+    elif args.url:
+        host, port, use_tls, path, host_header = probe.request_from_url(args.url)
+        # En modo URL el payload va en la query: por defecto lo URL-encodeamos.
+        encode = "none" if args.encode == "none" else "url"
+        if marker not in path:
+            print(red(f"El marcador '{marker}' debe aparecer en la URL. "
+                      f"Ej: 'http://host/?q={marker}'"))
+            return 1
+        request_template = probe.build_http_request(args.method, path, host_header)
+    else:
+        print(red("Indica un objetivo: una URL con el marcador, o --request FILE + --target."))
+        return 1
+
+    # --- 2. Reunir los payloads a probar ---
+    payloads: list[tuple[str, str]] = []
+    if args.wordlist:
+        try:
+            for line in Path(args.wordlist).read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    payloads.append((line, "wordlist"))
+        except OSError as exc:
+            print(red(f"No se pudo leer la wordlist: {exc}"))
+            return 1
+    elif getattr(args, "from_vuln", None):
+        v = find_vuln(load_vulns(), args.from_vuln)
+        if v is None:
+            print(red(f"Tema no encontrado: {args.from_vuln}"))
+            return 1
+        payloads = _flatten_payloads(v)
+    else:
+        chosen = _choose_vuln_payloads(load_vulns())
+        if not chosen:
+            return 1
+        payloads = chosen
+
+    if not payloads:
+        print(red("No hay payloads que probar."))
+        return 1
+
+    # --- 3. Gate de autorizacion ---
+    try:
+        probe.confirm_authorization(host, assume_yes=args.yes)
+    except probe.AuthorizationError as exc:
+        print(red(f"  {exc}"), file=sys.stderr)
+        return 2
+
+    # --- 4. Ejecutar ---
+    print(bold(cyan(
+        f"\n  Fuzzing {host}:{port}{' (TLS)' if use_tls else ''} — "
+        f"{len(payloads)} variaciones + baseline\n")))
+
+    def progress(i, total, res):
+        mark = red("!") if res.score >= 3 else (yellow("·") if res.score > 0 else dim("."))
+        sys.stdout.write(f"\r  [{i}/{total}] {mark} ")
+        sys.stdout.flush()
+
+    try:
+        results = probe.run_fuzz(
+            host=host, port=port, use_tls=use_tls,
+            request_template=request_template, marker=marker,
+            payloads=payloads, timeout=args.timeout, throttle=args.throttle,
+            encode=encode, on_progress=progress,
+        )
+    except ValueError as exc:
+        print(red(f"\n{exc}"))
+        return 1
+    sys.stdout.write("\r" + " " * 40 + "\r")
+
+    # --- 5. Reportar ---
+    baseline = next((r for r in results if r.label == "baseline"), None)
+    findings = [r for r in results if r.label != "baseline"]
+    interesting = [r for r in findings if r.score > 0]
+
+    if baseline:
+        print(dim(f"  baseline → status {baseline.status} · "
+                  f"{baseline.body_len} bytes · {baseline.elapsed_ms:.0f}ms\n"))
+
+    print(bold(f"  {len(interesting)} variacion(es) interesante(s) de {len(findings)}:\n"))
+    top = interesting[: args.top] if interesting else []
+    if not top:
+        print(dim("  Nada destaco sobre la baseline. Prueba otros payloads/parametros.\n"))
+    for r in top:
+        sev = red("ALTO") if r.score >= 5 else (yellow("medio") if r.score >= 2 else dim("bajo"))
+        st = r.status if r.status is not None else "—"
+        head = (f"  [{sev}] status {st} · {r.body_len}b · {r.elapsed_ms:.0f}ms"
+                f"  {dim('(' + r.label + ')')}")
+        print(head)
+        payload_show = r.payload if len(r.payload) <= 70 else r.payload[:69] + "…"
+        print(green(f"      {payload_show}"))
+        for note in r.notes:
+            print(dim(f"        → {note}"))
+        print()
+    print(dim("  Recuerda: confirma manualmente cada hallazgo antes de reportarlo.\n"))
+    return 0
+
+
 def cmd_serve(args) -> int:
     """Lanza la interfaz web local."""
     import http.server
@@ -491,6 +659,39 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--port", type=int, default=8777)
     sp.add_argument("--no-browser", action="store_true")
     sp.set_defaults(func=cmd_serve)
+
+    sp = sub.add_parser(
+        "connect",
+        help="Cliente de socket crudo (TCP/TLS) interactivo — habla protocolos a mano",
+    )
+    sp.add_argument("host", help="host o IP del objetivo (autorizado)")
+    sp.add_argument("port", type=int, help="puerto")
+    sp.add_argument("--tls", action="store_true", help="envuelve la conexion en TLS")
+    sp.add_argument("--timeout", type=float, default=8.0)
+    sp.add_argument("--yes", action="store_true", help="asume autorizacion (solo si la tienes)")
+    sp.set_defaults(func=cmd_connect)
+
+    sp = sub.add_parser(
+        "fuzz",
+        help="Prueba automatizada de variaciones de payload sobre un objetivo autorizado",
+        description="Inyecta una lista de payloads en el marcador (FUZZ) de una request, "
+                    "los envia por socket y compara cada variacion contra una baseline.",
+    )
+    sp.add_argument("url", nargs="?", help="URL con el marcador, ej: 'http://localhost/?q=FUZZ'")
+    sp.add_argument("--request", help="fichero con una request HTTP cruda que contiene el marcador")
+    sp.add_argument("--target", help="con --request: host[:port] al que conectar")
+    sp.add_argument("--marker", default="FUZZ", help="marcador a sustituir (def. FUZZ)")
+    sp.add_argument("--encode", choices=["auto", "url", "none"], default="auto",
+                    help="codificacion del payload: url-encode en modo URL por defecto")
+    sp.add_argument("--method", default="GET", help="metodo HTTP en modo URL (def. GET)")
+    sp.add_argument("--tls", action="store_true", help="usa TLS (auto si la URL es https)")
+    sp.add_argument("--from", dest="from_vuln", help="usa los payloads de un tema (ej. sql-injection)")
+    sp.add_argument("--wordlist", help="fichero con un payload por linea")
+    sp.add_argument("--timeout", type=float, default=8.0)
+    sp.add_argument("--throttle", type=float, default=0.0, help="segundos de espera entre requests")
+    sp.add_argument("--top", type=int, default=15, help="cuantos hallazgos mostrar (def. 15)")
+    sp.add_argument("--yes", action="store_true", help="asume autorizacion (solo si la tienes)")
+    sp.set_defaults(func=cmd_fuzz)
 
     return p
 

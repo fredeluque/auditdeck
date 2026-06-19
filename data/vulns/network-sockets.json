@@ -1,0 +1,63 @@
+{
+  "id": "network-sockets",
+  "name": "Sockets y protocolos a mano",
+  "category": "Fundamentos / Networking",
+  "severity": "Info",
+  "aka": ["raw sockets", "banner grabbing", "protocol analysis", "fuzzing"],
+  "summary": "Entender que viaja por el cable es la base del bug hunting. Hablar TCP/TLS a mano (con un socket crudo) te ensena como se construye una request HTTP, como responde un servidor y donde inyectar variaciones. AuditDeck incluye 'connect' (cliente de socket interactivo) y 'fuzz' (prueba automatizada de variaciones contra una baseline).",
+  "where_to_look": [
+    "Servicios expuestos tras un escaneo de puertos (HTTP, HTTPS, SMTP, FTP, Redis, etc.).",
+    "Cualquier parametro reflejado o que cambie la respuesta: es candidato a fuzzing de variaciones.",
+    "Cabeceras y cuerpo de la request: Host, Cookie, Content-Type, parametros POST.",
+    "Diferencias sutiles de tiempo, longitud o estado entre una entrada benigna y una maliciosa."
+  ],
+  "detection": [
+    "Banner grabbing: conecta al puerto y observa el banner inicial (SMTP/FTP/SSH hablan primero).",
+    "HTTP a mano: envia 'GET / HTTP/1.1' + Host y lee la respuesta cruda byte a byte.",
+    "Baseline + variaciones: manda una entrada normal, anota status/longitud/tiempo, y compara cada payload contra esa baseline.",
+    "Senales de inyeccion: firmas de error (SQL/PHP/stack traces), reflexion del payload (XSS), o retardos (blind por tiempo)."
+  ],
+  "burp_steps": [
+    "En Burp, captura la request y guardala (Save item) para reutilizarla como plantilla cruda.",
+    "Marca el punto de inyeccion con un marcador (en AuditDeck, la palabra FUZZ).",
+    "Usa Repeater para iterar a mano, o Intruder/Turbo Intruder para automatizar variaciones.",
+    "Compara respuestas con Logger++ / Comparer para detectar diferencias minimas."
+  ],
+  "payloads": {
+    "Request HTTP minima (pegar en connect)": [
+      "GET / HTTP/1.1",
+      "Host: TARGET",
+      "Connection: close",
+      ""
+    ],
+    "Sondas rapidas de inyeccion": [
+      "'",
+      "\"",
+      "<ADxss>",
+      "${7*7}",
+      "{{7*7}}",
+      "../../../../etc/passwd",
+      "|| id"
+    ]
+  },
+  "commands": [
+    {"tool": "auditdeck", "desc": "Cliente de socket crudo interactivo (TCP)", "cmd": "auditdeck connect 127.0.0.1 8080"},
+    {"tool": "auditdeck", "desc": "Cliente de socket sobre TLS", "cmd": "auditdeck connect lab.web-security-academy.net 443 --tls"},
+    {"tool": "auditdeck", "desc": "Prueba automatizada de variaciones con payloads de la base de conocimiento", "cmd": "auditdeck fuzz 'http://LAB/?q=FUZZ' --from xss"},
+    {"tool": "auditdeck", "desc": "Fuzzear una request cruda de Burp", "cmd": "auditdeck fuzz --request req.txt --target LAB:443 --tls --from sql-injection"},
+    {"tool": "nc", "desc": "HTTP a mano con netcat", "cmd": "printf 'GET / HTTP/1.1\\r\\nHost: t\\r\\nConnection: close\\r\\n\\r\\n' | nc t 80"},
+    {"tool": "openssl", "desc": "Hablar TLS a mano", "cmd": "openssl s_client -connect t:443 -quiet"}
+  ],
+  "remediation": [
+    "Esto es una tecnica de aprendizaje/deteccion, no una vulnerabilidad en si.",
+    "Del lado defensivo: rate-limiting, WAF y validacion estricta de entrada reducen la superficie de fuzzing.",
+    "Normaliza errores: nunca devuelvas trazas SQL/stack al cliente (delatan la tecnologia y la inyeccion)."
+  ],
+  "portswigger_labs": [],
+  "references": [
+    {"title": "Python — socket (libreria estandar)", "url": "https://docs.python.org/3/library/socket.html"},
+    {"title": "Python — ssl (TLS)", "url": "https://docs.python.org/3/library/ssl.html"},
+    {"title": "MDN — Anatomia de una request HTTP", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Messages"},
+    {"title": "PortSwigger — Web Security Academy", "url": "https://portswigger.net/web-security"}
+  ]
+}
