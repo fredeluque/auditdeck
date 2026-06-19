@@ -1,0 +1,50 @@
+{
+  "id": "http-request-smuggling",
+  "name": "HTTP Request Smuggling",
+  "category": "Server-side",
+  "severity": "High",
+  "aka": ["Desync", "CL.TE", "TE.CL"],
+  "summary": "Discrepancia entre cómo el front-end y el back-end interpretan los límites de una petición HTTP (Content-Length vs Transfer-Encoding), permitiendo 'colar' una petición que afecta a otros usuarios.",
+  "where_to_look": [
+    "Arquitecturas con front-end (proxy/CDN/load balancer) + back-end.",
+    "Soporte simultáneo de Content-Length y Transfer-Encoding: chunked."
+  ],
+  "detection": [
+    "Usa la extensión 'HTTP Request Smuggler' para detección automática.",
+    "Prueba técnicas CL.TE y TE.CL con peticiones temporizadas.",
+    "Confirma con una petición que provoque una respuesta o retardo anómalo."
+  ],
+  "burp_steps": [
+    "Desactiva 'Update Content-Length' automático en Repeater para controlar las cabeceras.",
+    "Envía una petición con CL y TE conflictivos y observa el comportamiento del back-end.",
+    "Para CL.TE: el front-end usa Content-Length, el back-end usa Transfer-Encoding.",
+    "Encadena para envenenar la cola de peticiones y capturar peticiones de otros usuarios.",
+    "Usa HTTP Request Smuggler > 'Smuggle probe' para automatizar la confirmación."
+  ],
+  "payloads": {
+    "CL.TE (front CL, back TE)": [
+      "Content-Length: 13\\r\\nTransfer-Encoding: chunked\\r\\n\\r\\n0\\r\\n\\r\\nSMUGGLED"
+    ],
+    "TE.CL (front TE, back CL)": [
+      "Transfer-Encoding: chunked\\r\\nContent-Length: 3\\r\\n\\r\\n8\\r\\nSMUGGLED\\r\\n0\\r\\n\\r\\n"
+    ],
+    "Ofuscación de TE": [
+      "Transfer-Encoding: xchunked",
+      "Transfer-Encoding:[tab]chunked",
+      "Transfer-Encoding\\r\\n: chunked"
+    ]
+  },
+  "commands": [],
+  "remediation": [
+    "Usa HTTP/2 de extremo a extremo sin downgrade a HTTP/1.1.",
+    "Configura el front-end para normalizar peticiones ambiguas y rechazar las que mezclan CL y TE.",
+    "Que front-end y back-end usen la misma implementación/interpretación."
+  ],
+  "portswigger_labs": [
+    {"title": "Confirmar vulnerabilidad CL.TE por tiempo", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/request-smuggling/finding/lab-confirming-cl-te-via-differential-responses"},
+    {"title": "Bypass de seguridad front-end con CL.TE", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/request-smuggling/exploiting/lab-bypass-front-end-controls-cl-te"}
+  ],
+  "references": [
+    {"title": "PortSwigger — Request smuggling", "url": "https://portswigger.net/web-security/request-smuggling"}
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "id": "commands",
+  "name": "Cheatsheet de comandos",
+  "sections": [
+    {
+      "title": "Reconocimiento",
+      "entries": [
+        {"desc": "Resolución y subdominios", "cmd": "subfinder -d target.com -silent | httpx -silent"},
+        {"desc": "Escaneo de puertos rápido", "cmd": "nmap -sC -sV -oN scan.txt target.com"},
+        {"desc": "Tecnologías web", "cmd": "whatweb https://target.com"},
+        {"desc": "Crawling de URLs históricas", "cmd": "gau target.com | tee urls.txt"}
+      ]
+    },
+    {
+      "title": "Descubrimiento de contenido",
+      "entries": [
+        {"desc": "Fuzzing de directorios", "cmd": "feroxbuster -u https://target.com -w /usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt"},
+        {"desc": "Fuzzing de archivos con ffuf", "cmd": "ffuf -w wordlist.txt -u https://target.com/FUZZ -mc 200,301,302,403"},
+        {"desc": "Fuzzing de parámetros", "cmd": "ffuf -w params.txt -u 'https://target.com/page?FUZZ=1' -fs 4242"},
+        {"desc": "Virtual hosts", "cmd": "ffuf -w subdomains.txt -H 'Host: FUZZ.target.com' -u https://target.com -fs 0"}
+      ]
+    },
+    {
+      "title": "Inyección",
+      "entries": [
+        {"desc": "SQLi desde request de Burp", "cmd": "sqlmap -r request.txt --batch --dump"},
+        {"desc": "XSS automatizado", "cmd": "dalfox url 'https://target.com/?q=test'"},
+        {"desc": "SSTI", "cmd": "tplmap.py -u 'https://target.com/?name=test'"}
+      ]
+    },
+    {
+      "title": "Autenticación / fuerza bruta",
+      "entries": [
+        {"desc": "Login HTTP POST", "cmd": "hydra -L users.txt -P pass.txt target.com http-post-form '/login:user=^USER^&pass=^PASS^:Invalid'"},
+        {"desc": "Crackear hash JWT HS256", "cmd": "hashcat -a 0 -m 16500 jwt.txt rockyou.txt"},
+        {"desc": "Enumeración de usuarios", "cmd": "ffuf -w users.txt -X POST -d 'username=FUZZ&password=x' -u https://target.com/login -fr 'Invalid username'"}
+      ]
+    },
+    {
+      "title": "Burp Suite — atajos y extensiones útiles",
+      "entries": [
+        {"desc": "Enviar al Repeater / Intruder", "cmd": "Ctrl+R  /  Ctrl+I"},
+        {"desc": "Buscar en el historial del proxy", "cmd": "Ctrl+Shift+F"},
+        {"desc": "Extensiones recomendadas (BApp Store)", "cmd": "Autorize, JWT Editor, Param Miner, HTTP Request Smuggler, Logger++, Turbo Intruder"},
+        {"desc": "OAST / interacciones ciegas", "cmd": "Burp > Collaborator client > Copy to clipboard"}
+      ]
+    }
+  ]
+}

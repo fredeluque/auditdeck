@@ -1,0 +1,49 @@
+{
+  "id": "csrf",
+  "name": "Cross-Site Request Forgery (CSRF)",
+  "category": "Client-side",
+  "severity": "Medium",
+  "aka": ["CSRF", "XSRF"],
+  "summary": "Una web maliciosa induce al navegador de la víctima (autenticada) a enviar una petición que cambia estado en la aplicación objetivo, aprovechando que las cookies de sesión se envían automáticamente.",
+  "where_to_look": [
+    "Acciones que cambian estado: cambiar email/contraseña, transferir, eliminar, modificar roles.",
+    "Endpoints que dependen solo de la cookie de sesión para autorizar.",
+    "Tokens anti-CSRF ausentes, predecibles, no validados o no atados a la sesión."
+  ],
+  "detection": [
+    "Quita el parámetro/cabecera del token CSRF y comprueba si la petición sigue siendo aceptada.",
+    "Reutiliza un token de otra sesión: si funciona, no está atado al usuario.",
+    "Cambia POST por GET para ver si el endpoint acepta ambos.",
+    "Comprueba si la validación del token solo ocurre cuando el parámetro está presente (omítelo)."
+  ],
+  "burp_steps": [
+    "Captura la petición que cambia estado y mándala al Repeater.",
+    "Elimina o altera el token CSRF y reenvía para ver la validación real.",
+    "Si es explotable, usa Engagement tools > Generate CSRF PoC para crear el HTML.",
+    "Aloja el PoC en el exploit server del lab y entrégalo a la víctima.",
+    "Verifica con el SameSite de la cookie: Lax/Strict/None cambia la explotabilidad."
+  ],
+  "payloads": {
+    "PoC HTML (auto-submit)": [
+      "<form action=\"https://lab/my-account/change-email\" method=\"POST\"><input type=\"hidden\" name=\"email\" value=\"hacker@evil.com\"></form><script>document.forms[0].submit()</script>"
+    ],
+    "PoC vía GET (imagen)": [
+      "<img src=\"https://lab/my-account/change-email?email=hacker@evil.com\">"
+    ]
+  },
+  "commands": [],
+  "remediation": [
+    "Usa tokens anti-CSRF aleatorios, atados a la sesión y validados en el servidor.",
+    "Configura cookies de sesión con SameSite=Lax o Strict.",
+    "Para APIs, exige cabeceras personalizadas o verifica el header Origin/Referer."
+  ],
+  "portswigger_labs": [
+    {"title": "CSRF sin defensas", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/csrf/lab-no-defenses"},
+    {"title": "Token validado solo si está presente", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/csrf/bypassing-token-validation/lab-token-not-tied-to-session"},
+    {"title": "Bypass de SameSite Lax con method override", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/csrf/bypassing-samesite-restrictions/lab-samesite-lax-bypass-via-method-override"}
+  ],
+  "references": [
+    {"title": "PortSwigger — CSRF", "url": "https://portswigger.net/web-security/csrf"},
+    {"title": "OWASP — CSRF", "url": "https://owasp.org/www-community/attacks/csrf"}
+  ]
+}

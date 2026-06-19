@@ -1,0 +1,50 @@
+{
+  "id": "access-control",
+  "name": "Broken Access Control / IDOR",
+  "category": "Access control",
+  "severity": "High",
+  "aka": ["IDOR", "BOLA", "Authorization bypass", "Privilege escalation"],
+  "summary": "La aplicación no comprueba correctamente que el usuario esté autorizado para realizar una acción o acceder a un recurso, permitiendo ver datos de otros usuarios o ejecutar funciones privilegiadas.",
+  "where_to_look": [
+    "IDs en URL/parámetros/JSON que referencian objetos (id=123, /account/123, GUIDs).",
+    "Rutas administrativas (/admin) y endpoints no enlazados pero predecibles.",
+    "Campos como role, isAdmin, account_type en peticiones o respuestas.",
+    "Control de acceso basado solo en que la UI oculte el enlace (security by obscurity)."
+  ],
+  "detection": [
+    "Cambia tu ID por el de otro usuario y comprueba si accedes a sus datos (IDOR horizontal).",
+    "Accede directamente a /admin o funciones privilegiadas sin ser admin (vertical).",
+    "Repite una acción admin con una sesión de usuario normal (solo cambia la cookie).",
+    "Comprueba si los GUID/IDs aparecen filtrados en otra parte (perfiles, mensajes)."
+  ],
+  "burp_steps": [
+    "Usa dos cuentas: captura una acción con la cuenta A y reenvíala con la sesión de la B.",
+    "En Repeater, modifica el ID del objeto y observa si la respuesta cambia de dueño.",
+    "Prueba métodos alternativos (cambia POST↔GET) y rutas en mayúsculas o con sufijos.",
+    "Para escalada vertical, intenta la petición admin con cookie de usuario normal.",
+    "Usa la extensión 'Autorize' para automatizar la comparación de privilegios entre roles."
+  ],
+  "payloads": {
+    "Manipulación de identificadores": [
+      "/my-account?id=carlos",
+      "/api/users/124  (incrementa/decrementa)",
+      "{\"roleid\": 2}  → {\"roleid\": 1}",
+      "/admin  o  /administrator-panel"
+    ]
+  },
+  "commands": [],
+  "remediation": [
+    "Aplica control de acceso en el servidor para CADA petición, basado en la identidad de la sesión.",
+    "Deniega por defecto; no confíes en IDs del cliente para decidir propiedad.",
+    "Usa referencias indirectas o verifica ownership antes de devolver/modificar el recurso."
+  ],
+  "portswigger_labs": [
+    {"title": "Funcionalidad admin sin protección", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/access-control/lab-unprotected-admin-functionality"},
+    {"title": "IDOR en referencia directa a objeto", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/access-control/lab-insecure-direct-object-references"},
+    {"title": "Control de acceso roto por parámetro controlable", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/access-control/lab-user-id-controlled-by-request-parameter"}
+  ],
+  "references": [
+    {"title": "PortSwigger — Access control", "url": "https://portswigger.net/web-security/access-control"},
+    {"title": "OWASP — Broken Access Control (A01:2021)", "url": "https://owasp.org/Top10/A01_2021-Broken_Access_Control/"}
+  ]
+}

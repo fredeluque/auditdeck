@@ -1,0 +1,55 @@
+{
+  "id": "web-methodology",
+  "name": "Metodología de auditoría web (paso a paso)",
+  "description": "Flujo de trabajo general para abordar un objetivo web o un lab de PortSwigger, desde el reconocimiento hasta el reporte. Adáptalo a cada caso.",
+  "phases": [
+    {
+      "name": "1. Reconocimiento y mapeo",
+      "items": [
+        "Configura el proxy de Burp y navega toda la aplicación como usuario normal.",
+        "Revisa robots.txt, sitemap.xml, comentarios HTML/JS y archivos JS en busca de endpoints.",
+        "Identifica tecnologías (Wappalyzer, cabeceras Server/X-Powered-By).",
+        "Descubre contenido oculto con ffuf/feroxbuster o 'Discover content' de Burp.",
+        "Mapea roles y flujos: anónimo, usuario, admin; registra dos cuentas si puedes."
+      ]
+    },
+    {
+      "name": "2. Análisis de superficie de ataque",
+      "items": [
+        "Lista todos los parámetros de entrada: query, body, cabeceras, cookies, JSON.",
+        "Marca acciones que cambian estado (cambio de email, compra, borrado).",
+        "Identifica dónde se refleja o persiste cada input (contexto: HTML, SQL, JS, ruta, comando).",
+        "Anota qué decisiones de autorización toma la app y dónde."
+      ]
+    },
+    {
+      "name": "3. Pruebas por categoría",
+      "items": [
+        "Control de acceso / IDOR: cambia IDs y prueba acciones con sesión de otro rol.",
+        "Inyección: SQLi, command injection, SSTI, XXE en cada parámetro relevante.",
+        "Client-side: XSS (reflejada/almacenada/DOM), CSRF, CORS.",
+        "Server-side: SSRF, path traversal, file upload, deserialización.",
+        "Autenticación y sesión: enumeración, fuerza bruta, 2FA, JWT, tokens de reset.",
+        "Lógica de negocio: precios/cantidades negativas, saltar pasos, abuso de descuentos."
+      ]
+    },
+    {
+      "name": "4. Explotación y confirmación",
+      "items": [
+        "Reproduce de forma fiable con el mínimo payload que demuestre el impacto.",
+        "Usa Burp Collaborator para vulnerabilidades ciegas/OOB.",
+        "Encadena vulnerabilidades para maximizar el impacto (p. ej. SSRF → metadatos → RCE).",
+        "Captura evidencias: peticiones/respuestas, capturas, pasos exactos."
+      ]
+    },
+    {
+      "name": "5. Reporte",
+      "items": [
+        "Describe título, severidad, impacto y precondiciones.",
+        "Pasos de reproducción numerados y reproducibles.",
+        "Evidencia (request/response) y recomendación de remediación.",
+        "Referencias (PortSwigger/OWASP) y posibles variantes."
+      ]
+    }
+  ]
+}

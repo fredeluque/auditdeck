@@ -1,0 +1,55 @@
+{
+  "id": "authentication",
+  "name": "Authentication Vulnerabilities",
+  "category": "Authentication",
+  "severity": "High",
+  "aka": ["Auth bypass", "Brute force", "2FA bypass"],
+  "summary": "Fallos en los mecanismos de login, recuperación de contraseña o MFA que permiten suplantar a otros usuarios: fuerza bruta, enumeración de usuarios, lógica de verificación débil o bypass de segundo factor.",
+  "where_to_look": [
+    "Login, registro, reset de contraseña, cambio de email y flujos de MFA/2FA.",
+    "Mensajes de error que distinguen usuario válido de inválido (enumeración).",
+    "Tokens de reset predecibles o reutilizables; cookies de 'remember me'."
+  ],
+  "detection": [
+    "Compara respuestas de usuario válido vs inválido (texto, tiempo, código de estado).",
+    "Comprueba si hay rate limiting real en login y en verificación de 2FA.",
+    "En el flujo 2FA, intenta saltar directamente a la página post-login sin completar el código.",
+    "Analiza el token de reset: ¿es secuencial, corto o reutilizable?"
+  ],
+  "burp_steps": [
+    "Enumeración: usa Intruder (Sniper) sobre el campo usuario y filtra por diferencias en la respuesta.",
+    "Fuerza bruta de contraseña: Cluster bomb con listas de usuario y contraseña; ordena por longitud/estado.",
+    "Bypass de 2FA: completa el primer factor, captura la petición a la página protegida y reenvíala sin el segundo.",
+    "Brute force del código 2FA: macro/Turbo Intruder para mantener la sesión y probar 0000–9999.",
+    "Observa diferencias sutiles de tiempo con 'Response received' para timing attacks."
+  ],
+  "payloads": {
+    "Listas útiles (SecLists)": [
+      "/usr/share/seclists/Usernames/top-usernames-shortlist.txt",
+      "/usr/share/seclists/Passwords/Common-Credentials/10k-most-common.txt"
+    ],
+    "Indicadores de enumeración": [
+      "Mensaje: 'Invalid username' vs 'Incorrect password'",
+      "Diferencia de tiempo de respuesta con usuario válido",
+      "Comportamiento distinto del bloqueo de cuenta"
+    ]
+  },
+  "commands": [
+    {"tool": "hydra", "desc": "Fuerza bruta de un formulario HTTP POST", "cmd": "hydra -L users.txt -P pass.txt lab 'http-post-form' '/login:username=^USER^&password=^PASS^:Invalid'"},
+    {"tool": "ffuf", "desc": "Enumeración de usuarios por diferencia de tamaño", "cmd": "ffuf -w users.txt -X POST -d 'username=FUZZ&password=x' -u https://lab/login -fr 'Invalid username'"}
+  ],
+  "remediation": [
+    "Implementa rate limiting / bloqueo y CAPTCHA en login y verificación de 2FA.",
+    "Devuelve mensajes de error genéricos e idéntico tiempo de respuesta.",
+    "Usa tokens de reset largos, aleatorios, de un solo uso y caducos; valida el segundo factor en el servidor."
+  ],
+  "portswigger_labs": [
+    {"title": "Enumeración de usuarios por respuestas distintas", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/authentication/password-based/lab-username-enumeration-via-different-responses"},
+    {"title": "Bypass de 2FA roto", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/authentication/multi-factor/lab-2fa-simple-bypass"},
+    {"title": "Brute force con protección por bloqueo", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/authentication/password-based/lab-broken-brute-force-protection-multiple-credentials-per-request"}
+  ],
+  "references": [
+    {"title": "PortSwigger — Authentication", "url": "https://portswigger.net/web-security/authentication"},
+    {"title": "OWASP — Authentication Cheat Sheet", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html"}
+  ]
+}

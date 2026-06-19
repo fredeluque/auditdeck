@@ -1,0 +1,50 @@
+{
+  "id": "info-disclosure",
+  "name": "Information Disclosure",
+  "category": "Recon",
+  "severity": "Medium",
+  "aka": ["Sensitive data exposure", "Fuga de información"],
+  "summary": "La aplicación revela información sensible que ayuda al atacante: mensajes de error verbosos, archivos de backup, comentarios, rutas internas, versiones de software o credenciales en respuestas.",
+  "where_to_look": [
+    "Mensajes de error y stack traces; respuestas con debug habilitado.",
+    "Archivos expuestos: /robots.txt, /sitemap.xml, .git/, backups (.bak, ~), .DS_Store.",
+    "Comentarios HTML/JS, cabeceras de versión, endpoints de API ocultos."
+  ],
+  "detection": [
+    "Provoca errores (tipos inesperados, IDs inválidos) y lee la información revelada.",
+    "Consulta /robots.txt, /sitemap.xml y rutas comunes de admin/backup.",
+    "Fuzzea rutas y extensiones con una wordlist; revisa el código fuente y JS."
+  ],
+  "burp_steps": [
+    "Revisa el target/sitemap de Burp para mapear contenido y comentarios.",
+    "Usa Burp > Engagement tools > Discover content (o ffuf/feroxbuster) para forzar rutas.",
+    "Inspecciona cabeceras de respuesta (Server, X-Powered-By) y mensajes de error.",
+    "Busca claves/secrets en archivos JS con la extensión y en respuestas."
+  ],
+  "payloads": {
+    "Rutas a revisar": [
+      "/robots.txt",
+      "/sitemap.xml",
+      "/.git/HEAD",
+      "/backup.zip  /index.php.bak  /.env",
+      "/server-status  /actuator/health"
+    ]
+  },
+  "commands": [
+    {"tool": "ffuf", "desc": "Descubrir contenido oculto", "cmd": "ffuf -w /usr/share/seclists/Discovery/Web-Content/raft-medium-files.txt -u https://lab/FUZZ"},
+    {"tool": "gitdumper", "desc": "Volcar un .git expuesto", "cmd": "git-dumper https://lab/.git/ ./out"}
+  ],
+  "remediation": [
+    "Deshabilita debug/mensajes de error verbosos en producción.",
+    "No despliegues backups, .git ni archivos temporales en el webroot.",
+    "Minimiza cabeceras de versión y revisa comentarios antes de publicar."
+  ],
+  "portswigger_labs": [
+    {"title": "Información en mensajes de error", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/information-disclosure/exploiting/lab-infoleak-in-error-messages"},
+    {"title": "Información en archivos de debug", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/information-disclosure/exploiting/lab-infoleak-on-debug-page"},
+    {"title": "Datos en historial de control de versiones (.git)", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/information-disclosure/exploiting/lab-infoleak-in-version-control-history"}
+  ],
+  "references": [
+    {"title": "PortSwigger — Information disclosure", "url": "https://portswigger.net/web-security/information-disclosure"}
+  ]
+}

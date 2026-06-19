@@ -1,0 +1,48 @@
+{
+  "id": "business-logic",
+  "name": "Business Logic Vulnerabilities",
+  "category": "Logic",
+  "severity": "Medium",
+  "aka": ["Logic flaws", "Flujo de negocio"],
+  "summary": "Fallos en las asunciones del diseño de la aplicación: el atacante usa la funcionalidad de forma no prevista (precios negativos, saltarse pasos, abusar de descuentos) para obtener un beneficio.",
+  "where_to_look": [
+    "Flujos de pago, descuentos, cupones y carritos.",
+    "Procesos multi-paso donde se puede saltar o reordenar un paso.",
+    "Campos que el cliente puede manipular y el servidor confía (precio, cantidad, rol)."
+  ],
+  "detection": [
+    "Pregúntate qué asume el desarrollador y rompe esa asunción (¿valida cantidades negativas?).",
+    "Manipula valores que deberían ser del servidor (precio, total, descuento).",
+    "Salta pasos: accede directamente a la URL del paso final sin completar los previos.",
+    "Prueba límites: 0, negativos, valores enormes, repeticiones del mismo cupón."
+  ],
+  "burp_steps": [
+    "Mapea el flujo completo con el proxy para entender cada paso y parámetro.",
+    "En Repeater, manipula cantidades/precios (negativos, decimales, overflow).",
+    "Reordena o omite peticiones del flujo multi-paso.",
+    "Reaplica cupones o repite la misma petición para ver acumulaciones indebidas."
+  ],
+  "payloads": {
+    "Manipulación de valores": [
+      "quantity=-1",
+      "price=0",
+      "price=0.01",
+      "Aplicar el mismo cupón N veces",
+      "Saltar a /checkout/confirm sin pagar"
+    ]
+  },
+  "commands": [],
+  "remediation": [
+    "Valida toda la lógica y los importes en el servidor, nunca confíes en valores del cliente.",
+    "Refuerza las invariantes (cantidades positivas, un cupón por pedido, orden de pasos).",
+    "Modela explícitamente los estados válidos del flujo de negocio."
+  ],
+  "portswigger_labs": [
+    {"title": "Confianza excesiva en controles del cliente", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/logic-flaws/examples/lab-logic-flaws-excessive-trust-in-client-side-controls"},
+    {"title": "Manipulación de precio negativo / descuentos", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/logic-flaws/examples/lab-logic-flaws-high-level"},
+    {"title": "Saltar un paso del flujo", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/logic-flaws/examples/lab-logic-flaws-low-level"}
+  ],
+  "references": [
+    {"title": "PortSwigger — Business logic vulnerabilities", "url": "https://portswigger.net/web-security/logic-flaws"}
+  ]
+}

