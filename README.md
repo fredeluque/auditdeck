@@ -87,11 +87,70 @@ No expone nada a Internet: escucha solo en `127.0.0.1`.
 
 ---
 
+## Sockets y prueba automatizada de variaciones
+
+> 🔐 **Estos dos comandos envían tráfico real.** Úsalos solo contra objetivos con
+> permiso explícito: tus labs de PortSwigger / Web Security Academy, CTFs (HTB/THM),
+> entornos propios o engagements autorizados. AuditDeck te pedirá confirmación antes
+> de tocar la red (gate de autorización). Para hosts que no parezcan de laboratorio,
+> tendrás que escribir el host a mano para continuar.
+
+### `connect` — habla protocolos a mano (TCP / TLS)
+
+Un cliente de socket crudo interactivo. Perfecto para **entender qué viaja por el cable**:
+construir una request HTTP a mano, hacer banner grabbing, o hablar SMTP/Redis/FTP línea a línea.
+
+```bash
+auditdeck connect 127.0.0.1 8080            # TCP crudo
+auditdeck connect LAB 443 --tls             # envuelto en TLS
+
+# Una vez dentro escribe, por ejemplo, una request HTTP a mano:
+#   GET / HTTP/1.1
+#   Host: LAB
+#   (línea vacía para enviar)
+# :quit para salir
+```
+
+### `fuzz` — prueba automatizada de variaciones de payload
+
+Inyecta una lista de payloads en un marcador (`FUZZ`) de una request, los envía por socket
+y **compara cada variación contra una baseline** para resaltar anomalías:
+
+- firmas de error (SQL, PHP, stack traces) → inyección probable,
+- **reflexión** del payload en la respuesta → posible XSS,
+- **retardos** notables respecto a la baseline → blind por tiempo (SQLi/SSTI),
+- diferencias de estado o longitud.
+
+```bash
+# Payloads sacados de la propia base de conocimiento
+auditdeck fuzz 'http://LAB/filter?category=FUZZ' --from sql-injection
+auditdeck fuzz 'http://LAB/search?q=FUZZ' --from xss
+
+# Sin --from: selector interactivo para elegir de qué tema sacar los payloads
+auditdeck fuzz 'http://LAB/?id=FUZZ'
+
+# Tu propia wordlist + throttle para no saturar el lab
+auditdeck fuzz 'http://LAB/?p=FUZZ' --wordlist payloads.txt --throttle 0.3
+
+# Fuzzear una request CRUDA guardada de Burp (que contenga el marcador FUZZ)
+auditdeck fuzz --request req.txt --target LAB:443 --tls --from os-command-injection
+```
+
+Opciones útiles: `--marker` (cambia `FUZZ`), `--encode {auto,url,none}` (en modo URL se
+url-encodea el payload por defecto), `--method`, `--top N`, `--timeout`, `--yes` (asume
+autorización, solo si la tienes).
+
+> El fuzzer **prioriza**, no confirma: te ordena las variaciones por "cuánto deberías
+> mirarlas". Confirma siempre cada hallazgo a mano (Repeater) antes de reportarlo.
+
+---
+
 ## Cómo está organizado
 
 ```
 auditdeck/
 ├── auditdeck.py              # CLI (Python puro)
+├── probe.py                  # motor de red: sockets (connect) + fuzzing (fuzz)
 ├── data/
 │   ├── vulns/*.json          # una ficha por vulnerabilidad
 │   ├── checklists/*.json     # metodologías paso a paso
@@ -136,6 +195,8 @@ Idea: convierte tus propias notas de cada lab que superes en una entrada nueva. 
 - Marcar labs como completados y llevar progreso.
 - Exportar una ficha a Markdown para pegar en el reporte.
 - Importar/sincronizar payloads desde PayloadsAllTheThings.
+- Para `fuzz`: detección de diferencias por cabeceras, soporte de cookies/sesión y fuzzing de múltiples parámetros a la vez.
+- Cliente de WebSockets para `connect`.
 
 ## Licencia y descargo
 

@@ -44,6 +44,26 @@
         {"desc": "Extensiones recomendadas (BApp Store)", "cmd": "Autorize, JWT Editor, Param Miner, HTTP Request Smuggler, Logger++, Turbo Intruder"},
         {"desc": "OAST / interacciones ciegas", "cmd": "Burp > Collaborator client > Copy to clipboard"}
       ]
+    },
+    {
+      "title": "Sockets y protocolos a mano (AuditDeck)",
+      "entries": [
+        {"desc": "Cliente de socket crudo TCP (banner grabbing)", "cmd": "auditdeck connect 127.0.0.1 8080"},
+        {"desc": "Cliente sobre TLS (HTTPS/SMTPS a mano)", "cmd": "auditdeck connect lab.web-security-academy.net 443 --tls"},
+        {"desc": "HTTP a mano con netcat", "cmd": "printf 'GET / HTTP/1.1\\r\\nHost: target\\r\\nConnection: close\\r\\n\\r\\n' | nc target 80"},
+        {"desc": "HTTP sobre TLS con openssl", "cmd": "openssl s_client -connect target:443 -quiet"},
+        {"desc": "Banner grabbing rápido (nmap)", "cmd": "nmap -sV --script=banner -p- target"}
+      ]
+    },
+    {
+      "title": "Prueba automatizada de variaciones (auditdeck fuzz)",
+      "entries": [
+        {"desc": "Probar payloads de SQLi sobre un parámetro de la URL", "cmd": "auditdeck fuzz 'http://LAB/filter?category=FUZZ' --from sql-injection"},
+        {"desc": "Probar XSS y ver reflexión", "cmd": "auditdeck fuzz 'http://LAB/search?q=FUZZ' --from xss"},
+        {"desc": "Selector interactivo de payloads (sin --from)", "cmd": "auditdeck fuzz 'http://LAB/?id=FUZZ'"},
+        {"desc": "Fuzzear una request cruda guardada de Burp (marcador FUZZ)", "cmd": "auditdeck fuzz --request req.txt --target LAB:443 --tls --from os-command-injection"},
+        {"desc": "Wordlist propia + throttle para no saturar", "cmd": "auditdeck fuzz 'http://LAB/?p=FUZZ' --wordlist payloads.txt --throttle 0.3"}
+      ]
     }
   ]
 }
